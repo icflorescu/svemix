@@ -1,8 +1,11 @@
-<script context="module" lang="ts">
+<script lang="ts">
 	import { writable } from 'svelte/store';
 	import type { Writable } from 'svelte/store';
+	import { createEventDispatcher } from 'svelte';
+	import { page, session } from '$app/stores';
+	import { goto } from '$app/navigation';
 
-	export const formState: Writable<{
+	const formState: Writable<{
 		loading: boolean;
 		data: any;
 		errors: Record<string, string>;
@@ -15,12 +18,6 @@
 		redirect: '',
 		formError: ''
 	});
-</script>
-
-<script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
-	import { page, session } from '$app/stores';
-	import { goto } from '$app/navigation';
 
 	const dispatchEvent = createEventDispatcher();
 
@@ -43,6 +40,32 @@
 		}
 
 		magicUrl = `/$__svemix__` + actionUrl;
+	}
+
+	$: if (typeof window === 'undefined' && $page.query.toString().length > 0) {
+		pageQueryToFormState();
+	}
+
+	function parseAllQuery(input: string[]) {
+		return input.reduce((acc, cur) => {
+			const [key, value] = cur.split('::');
+			acc[key] = value;
+
+			return acc;
+		}, {});
+	}
+
+	function pageQueryToFormState() {
+		const errors = $page.query.getAll('errors[]') ?? [];
+		const data = $page.query.getAll('data[]') ?? [];
+		const formError = $page.query.get('formError') ?? '';
+
+		formState.update((cur) => ({
+			...cur,
+			errors: parseAllQuery(errors),
+			data: parseAllQuery(data),
+			formError
+		}));
 	}
 
 	$: __session = $session;

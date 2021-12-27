@@ -88,10 +88,47 @@ export function postHandler({ action }: SvemixPostHandlerParams): RequestHandler
 
 		// This is the default form behaviour, navigate back to form submitter
 		if (!actionResult?.redirect) {
+			let location = request.headers?.referer;
+
+			const params = new URLSearchParams();
+
+			if (actionResult?.errors) {
+				Object.keys(actionResult.errors).forEach((key) => {
+					const value = actionResult.errors[key];
+					if (value.length > 0) {
+						params.append(`errors[]`, `${key}::${value}`);
+					}
+				});
+			}
+
+			if (actionResult?.formError && actionResult.formError.length > 0) {
+				params.append(`formError`, actionResult.formError);
+			}
+
+			if (actionResult?.data) {
+				Object.keys(actionResult.data).forEach((key) => {
+					const value = actionResult.data[key];
+					if (value.length > 0) {
+						params.append(`data[]`, `${key}::${value}`);
+					}
+				});
+			}
+
+			if (location.includes('?')) {
+				const [referer] = location.split('?');
+				location = referer;
+			}
+
+			const searchParams = params.toString();
+
+			if (searchParams.length > 0) {
+				location += '?' + searchParams;
+			}
+
 			return {
 				headers: {
 					...(actionResult?.headers || {}),
-					Location: request.headers?.referer
+					Location: location
 				},
 				status: actionResult?.status || 302,
 				body: {}
